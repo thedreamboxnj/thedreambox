@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>DREAMBOX // CYBER DECK LOUNGE (Unlimited)</title>
+    <title>DREAMBOX // CYBER DECK LOUNGE</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         /* ==========================================
-           Your original vaporwave CSS – unchanged
-           ========================================== */
+           Your original vaporwave CSS
+           (unchanged, kept the same look)
+        ========================================== */
         * {
             margin: 0;
             padding: 0;
@@ -409,9 +410,9 @@
 
 <script>
     // ============================================================
-    // UNLIMITED PLAYLIST PLAYER (works on GitHub Pages)
+    // UNLIMITED PLAYLIST PLAYER (fixed event names)
     // ============================================================
-    const API_KEY = 'AIzaSyAZKamrcHaJPk29dNx0U58gudRPlvxWtJI'; // Replace with your valid key
+    const API_KEY = 'AIzaSyAZKamrcHaJPk29dNx0U58gudRPlvxWtJI'; // <-- Your existing key
     let currentVideoIds = [];
     let currentIndex = 0;
     let shuffleMode = false;
@@ -520,14 +521,22 @@
             ytPlayer = new YT.Player('cyber-deck', {
                 width: '100%', height: '100%',
                 playerVars: { autoplay: 1, modestbranding: 1, rel: 0 },
-                events: { onReady: onPlayerReady, onStateChange, onError: onPlayerError }
+                events: {
+                    onReady: onPlayerReady,
+                    onStateChange: onPlayerStateChange,   // fixed: was onStateChange
+                    onError: onPlayerError
+                }
             });
         } else {
             window.onYouTubeIframeAPIReady = () => {
                 ytPlayer = new YT.Player('cyber-deck', {
                     width: '100%', height: '100%',
                     playerVars: { autoplay: 1, modestbranding: 1, rel: 0 },
-                    events: { onReady: onPlayerReady, onStateChange, onError: onPlayerError }
+                    events: {
+                        onReady: onPlayerReady,
+                        onStateChange: onPlayerStateChange,
+                        onError: onPlayerError
+                    }
                 });
             };
             const tag = document.createElement('script');
