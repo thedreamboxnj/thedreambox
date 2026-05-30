@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>DREAMBOX // CYBER DECK LOUNGE (Unlimited)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* ==========================================
+           Your original vaporwave CSS – unchanged
+           ========================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            letter-spacing: 1px;
+        }
+        body {
+            background-color: #0c0d1f;
+            background-image: linear-gradient(rgba(240, 74, 131, 0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(240, 74, 131, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: #ffffff;
+            overflow-x: hidden;
+            padding-bottom: 40px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .crt-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+            z-index: 9999;
+            pointer-events: none;
+            transform: translateZ(0);
+        }
+        h2, h3 { text-transform: uppercase; line-height: 1.1; }
+        h2 {
+            font-size: 2.5rem;
+            color: #d26cf3;
+            text-shadow: 4px 4px 0px #5be8f9;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        h3 {
+            font-size: 1.8rem;
+            color: #5be8f9;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 0px #0c0d1f, 3px 3px 0px #d26cf3;
+        }
+        header {
+            background: rgba(91, 232, 249, 0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-bottom: 4px solid #d26cf3;
+            margin-bottom: 10px;
+        }
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            flex-wrap: nowrap;
+            gap: 15px;
+        }
+        nav .logo {
+            font-size: 2.8rem;
+            color: #fff;
+            text-shadow: 3px 3px 0px #d26cf3, 6px 6px 0px #5be8f9;
+            font-style: italic;
+            font-weight: 900;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 15px;
+        }
+        nav ul li a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 1.2rem;
+            padding: 5px 10px;
+            transition: all 0.2s;
+            border-radius: 5px;
+            white-space: nowrap;
+        }
+        nav ul li a:hover {
+            background: #d26cf3;
+            color: #0c0d1f;
+            box-shadow: 0px 0px 10px rgba(210, 108, 243, 0.8);
+        }
+        main {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .media-box, .chat-container, .webring-container {
+            background: linear-gradient(135deg, rgba(12, 13, 31, 0.85) 0%, rgba(210, 108, 243, 0.15) 100%);
+            backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-top: 3px solid rgba(255, 255, 255, 0.8);
+            border-left: 3px solid rgba(255, 255, 255, 0.8);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .cyberdeck-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        @media (min-width: 769px) {
+            .cyberdeck-layout {
+                flex-direction: row;
+                align-items: stretch;
+                gap: 25px;
+            }
+            .player-area {
+                flex: 5;
+                min-width: 0;
+            }
+            .playlist-area {
+                flex: 1;
+                max-width: 200px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            .playlist-selector-tabs {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                width: 100%;
+            }
+            .playlist-selector-tabs .playlist-btn {
+                border: 2px solid #d26cf3;
+                border-radius: 10px;
+                text-align: center;
+                padding: 8px 6px;
+                font-size: 0.85rem;
+                background: #0c0d1f;
+                color: #5be8f9;
+                cursor: pointer;
+                transition: all 0.2s;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .playlist-selector-tabs .playlist-btn.active {
+                background: #d26cf3;
+                color: #0c0d1f;
+                border-color: #5be8f9;
+                transform: scale(1.02);
+                box-shadow: 0 0 12px #5be8f9;
+            }
+            .playlist-selector-tabs .playlist-btn:hover {
+                background: rgba(210, 108, 243, 0.3);
+                transform: translateX(3px);
+            }
+            .playlist-area .vibe-text {
+                font-size: 0.65rem;
+                margin-top: 8px;
+                opacity: 0.6;
+                text-align: center;
+                font-family: monospace;
+            }
+            .transport-wrapper {
+                margin-top: 20px;
+                width: 100%;
+            }
+        }
+        @media (max-width: 768px) {
+            .cyberdeck-layout { flex-direction: column; gap: 20px; }
+            .playlist-selector-tabs {
+                display: flex;
+                justify-content: center;
+                gap: 12px;
+                flex-wrap: wrap;
+                margin-top: 5px;
+                margin-bottom: 5px;
+            }
+            .playlist-selector-tabs .playlist-btn {
+                border: 2px solid #d26cf3;
+                border-radius: 30px;
+                padding: 8px 16px;
+                font-size: 0.9rem;
+                background: #0c0d1f;
+                color: #5be8f9;
+                font-weight: bold;
+                white-space: nowrap;
+            }
+            .playlist-selector-tabs .playlist-btn.active {
+                background: #d26cf3;
+                color: #0c0d1f;
+                transform: scale(1.02);
+                box-shadow: 0 0 12px #5be8f9;
+            }
+            .playlist-area .vibe-text { display: none; }
+            nav { flex-direction: column; gap: 10px; }
+            nav .logo { font-size: 1.8rem; white-space: normal; text-align: center; }
+            nav ul { flex-wrap: wrap; justify-content: center; }
+            .cyber-player-frame #player-container { height: 280px; }
+            h2 { font-size: 1.8rem; }
+            .media-box { padding: 20px; }
+        }
+        .cyber-player-frame {
+            background: #000;
+            border: 4px solid #5be8f9;
+            border-radius: 20px;
+            padding: 8px;
+            box-shadow: 0px 0px 25px rgba(91, 232, 249, 0.7), inset 0px 0px 20px #d26cf3;
+        }
+        .cyber-player-frame #player-container {
+            width: 100%;
+            height: 450px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+        }
+        .transport-controls {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            margin-top: 5px;
+        }
+        .transport-btn {
+            background: rgba(12, 13, 31, 0.9);
+            border: 2px solid #5be8f9;
+            color: #5be8f9;
+            font-family: 'Impact', sans-serif;
+            padding: 6px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.9rem;
+        }
+        .transport-btn:hover {
+            background: #d26cf3;
+            color: #0c0d1f;
+            border-color: #fff;
+            box-shadow: 0 0 12px #d26cf3;
+        }
+        #shuffle-btn {
+            background: #0c0d1f;
+            border-color: #ffaa00;
+            color: #ffaa00;
+        }
+        .chat-container iframe {
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .webring-container {
+            text-align: center;
+            max-width: 480px;
+            margin: 20px auto;
+        }
+        .webring-controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        .webring-btn, .webring-hub {
+            background: rgba(0,0,0,0.6);
+            border: 2px solid #5be8f9;
+            padding: 8px 20px;
+            border-radius: 8px;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            transition: 0.2s;
+            display: inline-block;
+        }
+        .webring-btn:hover, .webring-hub:hover {
+            background: #5be8f9;
+            color: #0c0d1f;
+            transform: scale(1.02);
+            box-shadow: 0 0 12px #5be8f9;
+        }
+        footer {
+            text-align: center;
+            background: rgba(12, 13, 31, 0.8);
+            border-top: 4px solid #5be8f9;
+            padding: 30px;
+            margin-top: 40px;
+        }
+        footer a {
+            color: #d26cf3;
+            font-size: 1.2rem;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        footer a:hover {
+            color: #5be8f9;
+            text-shadow: 0px 0px 8px #5be8f9;
+        }
+        .host-tag {
+            margin-top: 15px;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+        .loading-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #d26cf3;
+            color: #0c0d1f;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            z-index: 10001;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="crt-overlay"></div>
+
+<header>
+    <nav>
+        <div class="logo">DREAMBOX PRODUCTIONS</div>
+        <ul>
+            <li><a href="#">HOME</a></li>
+            <li><a href="#">EVENTS</a></li>
+            <li><a href="#">REVIEWS</a></li>
+            <li><a href="#">LOUNGE</a></li>
+            <li><a href="#">BOOKING</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main>
+    <h2>🌀 THE CYBER DECK LOUNGE 🌀</h2>
+    <div class="interactive-grid" style="display: flex; flex-direction: column; gap: 30px;">
+        <div class="media-box">
+            <div class="cyberdeck-layout">
+                <div class="player-area">
+                    <div class="cyber-player-frame">
+                        <div id="player-container" style="width: 100%; height: 450px; background: #000; border-radius: 12px; overflow: hidden;">
+                            <div id="cyber-deck"></div>
+                        </div>
+                    </div>
+                    <div class="transport-wrapper" id="catbox-controls">
+                        <div class="transport-controls">
+                            <button class="transport-btn" id="prev-btn">◀ PREV</button>
+                            <button id="shuffle-btn" class="transport-btn">🔀 SHUF: OFF</button>
+                            <button class="transport-btn" id="next-btn">NEXT ▶</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="playlist-area">
+                    <div class="playlist-selector-tabs" id="playlistTabsWrapper">
+                        <button class="playlist-btn active" data-playlist-id="PLm0x3HD8x6CP3no0izE7AreCY4pcIr5_7">MUSIC VIDEOS</button>
+                        <button class="playlist-btn" data-playlist-id="PLHMlZG4cXc4Kg_qSArbWS_8HwOdCnFgsG">PLUR</button>
+                        <button class="playlist-btn" data-playlist-id="PLm0x3HD8x6CMbBbwBL1upNiWF2wu2Boxq">VAPORWAVE</button>
+                        <button class="playlist-btn" data-playlist-id="PLm0x3HD8x6CMFcUY1pY3yN1LkPQ8Pyyic">SLUT POP</button>
+                        <button class="playlist-btn" data-playlist-id="PLm0x3HD8x6COvPZ6q89JXNg8d8lkLXLaQ">2010'S</button>
+                        <button class="playlist-btn" data-playlist-id="PLm0x3HD8x6CMnNt_WX6AppP05txGwYmM7">2000'S</button>
+                        <button class="playlist-btn" data-playlist-id="PLm0x3HD8x6CNIrhKVYizgkH28e1tQqy3L">80s'S</button>
+                        <button class="playlist-btn" data-playlist-id="PLm0x3HD8x6CN20O4nHZ1GLx1_9z-bNq0t">DISCOVER</button>
+                    </div>
+                    <div class="vibe-text">
+                        <i class="fas fa-sync-alt"></i> SELECT WAVELENGTH
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="chat-container">
+            <h3><i class="fas fa-comment-dots"></i> LIVE CHAT // TERMINAL FEED</h3>
+            <iframe src="https://www3.cbox.ws/box/?boxid=3555518&boxtag=jujKLD" width="100%" height="450" allowtransparency="yes" allow="autoplay" frameborder="0" marginheight="0" marginwidth="0" scrolling="auto" style="border-radius: 12px; border: 1px solid #5be8f9;"></iframe>
+        </div>
+    </div>
+    <div class="webring-container">
+        <h3>📼 HOTLINE WEBRING 📼</h3>
+        <div class="webring-controls">
+            <a href="https://hotlinewebring.club/DREAMNJ/previous" class="webring-btn">◀ PREV</a>
+            <a href="https://hotlinewebring.club/" target="_blank" class="webring-hub">HUB</a>
+            <a href="https://hotlinewebring.club/DREAMNJ/next" class="webring-btn">NEXT ▶</a>
+        </div>
+        <p>✦ CONNECTED TO THE NEON WEB ✦</p>
+    </div>
+</main>
+
+<footer>
+    <h2 style="font-size: 1.5rem;">GET BOOKED / DM FOR LOCATION</h2>
+    <p class="links">
+        <a href="mailto:booking@dreamboxproductions.com">✉ EMAIL US</a> // 
+        <a href="https://www.instagram.com/penni.pitstomp/" target="_blank">📸 INSTAGRAM</a>
+    </p>
+    <p class="host-tag">⚡ Hosted on GitHub Pages 🏳️‍🌈 🏳️‍⚧️</p>
+</footer>
+
+<div class="loading-indicator" id="loadingIndicator">⏳ FETCHING PLAYLIST...</div>
+
+<script>
+    // ============================================================
+    // UNLIMITED PLAYLIST PLAYER (works on GitHub Pages)
+    // ============================================================
+    const API_KEY = 'AIzaSyA-DhqxxjKBxYumqYYce6wbSyOxPaF5eWo'; // Replace with your valid key
+    let currentVideoIds = [];
+    let currentIndex = 0;
+    let shuffleMode = false;
+    let ytPlayer = null;
+    let isLoading = false;
+
+    const loadingDiv = document.getElementById('loadingIndicator');
+    const shuffleBtn = document.getElementById('shuffle-btn');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+
+    async function fetchAllVideoIds(playlistId) {
+        let allIds = [];
+        let nextPageToken = '';
+        do {
+            const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=50&playlistId=${playlistId}&key=${API_KEY}&pageToken=${nextPageToken}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            const ids = data.items.map(item => item.contentDetails.videoId);
+            allIds.push(...ids);
+            nextPageToken = data.nextPageToken || '';
+        } while (nextPageToken);
+        return allIds;
+    }
+
+    function setLoading(show, text = '⏳ FETCHING PLAYLIST...') {
+        loadingDiv.style.display = show ? 'block' : 'none';
+        if (show) loadingDiv.innerText = text;
+    }
+
+    async function loadPlaylist(playlistId, buttonElement) {
+        if (isLoading) return;
+        isLoading = true;
+        setLoading(true, `⏳ FETCHING ${buttonElement.innerText}...`);
+        document.querySelectorAll('.playlist-btn').forEach(btn => btn.classList.remove('active'));
+        buttonElement.classList.add('active');
+
+        try {
+            const videoIds = await fetchAllVideoIds(playlistId);
+            if (!videoIds.length) throw new Error('No videos found.');
+            currentVideoIds = videoIds;
+            currentIndex = 0;
+            if (ytPlayer) ytPlayer.loadVideoById(currentVideoIds[0]);
+            setLoading(false, `✅ LOADED ${currentVideoIds.length} VIDEOS`);
+            setTimeout(() => setLoading(false), 2000);
+        } catch (err) {
+            console.error(err);
+            setLoading(false, '❌ ERROR LOADING');
+            setTimeout(() => setLoading(false), 3000);
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    function playNext() {
+        if (!currentVideoIds.length) return;
+        if (shuffleMode) {
+            let newIndex = currentIndex;
+            while (newIndex === currentIndex && currentVideoIds.length > 1)
+                newIndex = Math.floor(Math.random() * currentVideoIds.length);
+            currentIndex = newIndex;
+        } else {
+            currentIndex = (currentIndex + 1) % currentVideoIds.length;
+        }
+        ytPlayer.loadVideoById(currentVideoIds[currentIndex]);
+    }
+
+    function playPrev() {
+        if (!currentVideoIds.length) return;
+        if (shuffleMode) {
+            let newIndex = currentIndex;
+            while (newIndex === currentIndex && currentVideoIds.length > 1)
+                newIndex = Math.floor(Math.random() * currentVideoIds.length);
+            currentIndex = newIndex;
+        } else {
+            currentIndex = (currentIndex - 1 + currentVideoIds.length) % currentVideoIds.length;
+        }
+        ytPlayer.loadVideoById(currentVideoIds[currentIndex]);
+    }
+
+    function toggleShuffle() {
+        shuffleMode = !shuffleMode;
+        shuffleBtn.innerText = shuffleMode ? "🔀 SHUF: ON" : "🔀 SHUF: OFF";
+        shuffleBtn.style.background = shuffleMode ? "#ffaa00" : "#0c0d1f";
+        shuffleBtn.style.color = shuffleMode ? "#0c0d1f" : "#ffaa00";
+        shuffleBtn.style.borderColor = shuffleMode ? "#ffffff" : "#5be8f9";
+    }
+
+    function onPlayerReady() {
+        const activeBtn = document.querySelector('.playlist-btn.active');
+        if (activeBtn) loadPlaylist(activeBtn.getAttribute('data-playlist-id'), activeBtn);
+    }
+
+    function onPlayerStateChange(event) {
+        if (event.data === YT.PlayerState.ENDED) playNext();
+    }
+
+    function onPlayerError(event) {
+        console.warn(`Skipping video (error ${event.data})`);
+        playNext();
+    }
+
+    function initYouTubePlayer() {
+        if (typeof YT !== 'undefined' && YT.Player) {
+            ytPlayer = new YT.Player('cyber-deck', {
+                width: '100%', height: '100%',
+                playerVars: { autoplay: 1, modestbranding: 1, rel: 0 },
+                events: { onReady: onPlayerReady, onStateChange, onError: onPlayerError }
+            });
+        } else {
+            window.onYouTubeIframeAPIReady = () => {
+                ytPlayer = new YT.Player('cyber-deck', {
+                    width: '100%', height: '100%',
+                    playerVars: { autoplay: 1, modestbranding: 1, rel: 0 },
+                    events: { onReady: onPlayerReady, onStateChange, onError: onPlayerError }
+                });
+            };
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            document.head.appendChild(tag);
+        }
+    }
+
+    function bindControls() {
+        prevBtn.onclick = playPrev;
+        nextBtn.onclick = playNext;
+        shuffleBtn.onclick = toggleShuffle;
+        document.querySelectorAll('.playlist-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                e.preventDefault();
+                const playlistId = btn.getAttribute('data-playlist-id');
+                if (playlistId) loadPlaylist(playlistId, btn);
+            };
+        });
+    }
+
+    bindControls();
+    initYouTubePlayer();
+</script>
+</body>
+</html>
