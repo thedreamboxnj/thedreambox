@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Batch Enrich JSON Files (add titles)</title>
+    <style>
+        body { background: #0c0d1f; color: #fff; font-family: monospace; padding: 20px; }
+        input, button { background: #1e1f3a; color: #5be8f9; border: 1px solid #d26cf3; padding: 8px; margin: 5px; border-radius: 8px; }
+        button { cursor: pointer; }
+        button:hover { background: #d26cf3; color: #0c0d1f; }
+        .status { margin-top: 20px; white-space: pre-wrap; font-family: monospace; background: #000; padding: 10px; border-radius: 8px; max-height: 400px; overflow-y: auto; }
+        .file-item { margin: 5px 0; padding: 4px; border-bottom: 1px solid #333; }
+        .success { color: #5be8f9; }
+        .error { color: #d26cf3; }
+    </style>
+</head>
+<body>
+<h2>Batch Enrich JSON Files (add titles)</h2>
+<p>Select <strong>multiple</strong> JSON files (each containing an array of video IDs). The tool will fetch titles via YouTube API and save enriched files.</p>
+<input type="file" id="fileInput" accept=".json" multiple>
+<button id="enrichBtn">Enrich All Files</button>
+<div id="status" class="status"></div>
+
+<script>
+const API_KEY = 'AIzaSyAZKamrcHaJPk29dNx0U58gudRPlvxWtJI'; // Replace if needed
+
+async function fetchTitlesForBatch(videoIds) {
+    if (!videoIds.length) return [];
+    const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoIds.join(',')}&key=${API_KEY}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    const titleMap = {};
+    if (data.items) {
+        data.items.forEach(item => { titleMap[item.id] = item.snippet.title; });
+    }
+    return videoIds.map(id => ({
+        id: id,
+        title: titleMap[id] || `Unknown video (${id.slice(0,8)}...)`
+    }));
+}
+
+async function enrichFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const ids = JSON.parse(e.target.result);
+                if (!Array.isArray(ids)) throw new Error('File does not contain an array');
+                const enriched = [];
+                for (let i = 0; i < ids.length; i += 50) {
+                    const chunk = ids.slice(i, i + 50);
+                    const enrichedChunk = await fetchTitlesForBatch(chunk);
+                    enriched.push(...enrichedChunk);
+                }
+                resolve(enriched);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(file);
+    });
+}
+
+function downloadJSON(data, filename) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+document.getElementById('enrichBtn').onclick = async () => {
+    const files = document.getElementById('fileInput').files;
+    const statusDiv = document.getElementById('status');
+    if (!files.length) {
+        alert('Select at least one JSON file');
+        return;
+    }
+    statusDiv.innerHTML = '';
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileDiv = document.createElement('div');
+        fileDiv.className = 'file-item';
+        fileDiv.innerHTML = `⏳ Processing ${file.name}...`;
+        statusDiv.appendChild(fileDiv);
+
+        try {
+            const enriched = await enrichFile(file);
+            const outputName = file.name.replace('.json', '_enriched.json');
+            downloadJSON(enriched, outputName);
+            fileDiv.innerHTML = `✅ ${file.name} → ${outputName} (${enriched.length} videos)`;
+            fileDiv.classList.add('success');
+        } catch (err) {
+            fileDiv.innerHTML = `❌ ${file.name}: ${err.message}`;
+            fileDiv.classList.add('error');
+        }
+
+        // Small delay to avoid overwhelming the API
+        await new Promise(r => setTimeout(r, 500));
+    }
+    statusDiv.innerHTML += `<br>🎉 All files processed. Check your downloads folder.`;
+};
+</script>
+</body>
+</html>
