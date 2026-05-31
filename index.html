@@ -6,7 +6,9 @@
     <title>DREAMBOX // CYBER DECK LOUNGE</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* Your original vaporwave CSS – unchanged (kept exactly as you provided) */
+        /* ==========================================
+           Your original CSS – unchanged (same as before)
+        ========================================== */
         * {
             margin: 0;
             padding: 0;
@@ -362,7 +364,6 @@
                 </div>
                 <div class="playlist-area">
                     <div class="playlist-selector-tabs" id="playlistTabsWrapper">
-                        <!-- data-playlist-id now refers to the JSON filename without extension -->
                         <button class="playlist-btn active" data-playlist-id="music_videos">MUSIC VIDEOS</button>
                         <button class="playlist-btn" data-playlist-id="plur">PLUR</button>
                         <button class="playlist-btn" data-playlist-id="vaporwave">VAPORWAVE</button>
@@ -370,7 +371,7 @@
                         <button class="playlist-btn" data-playlist-id="2010s">2010'S</button>
                         <button class="playlist-btn" data-playlist-id="2000s">2000'S</button>
                         <button class="playlist-btn" data-playlist-id="90s">90's</button>
-                         <button class="playlist-btn" data-playlist-id="80s">80's</button>
+                        <button class="playlist-btn" data-playlist-id="80s">80's</button>
                         <button class="playlist-btn" data-playlist-id="discover">DISCOVER</button>
                     </div>
                     <div class="vibe-text">
@@ -408,7 +409,7 @@
 
 <script>
     // ============================================================
-    // PLAYLIST PLAYER USING LOCAL JSON FILES (from /data folder)
+    // PLAYLIST PLAYER WITH HISTORY FOR PREV BUTTON (works with shuffle)
     // ============================================================
     let currentVideoIds = [];
     let currentIndex = 0;
@@ -416,19 +417,21 @@
     let ytPlayer = null;
     let isLoading = false;
 
+    // Playback history (stores indices of played videos)
+    let playHistory = [];
+    let historyPosition = -1;  // points to current index in history
+
     const loadingDiv = document.getElementById('loadingIndicator');
     const shuffleBtn = document.getElementById('shuffle-btn');
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
 
-    // Fetch video IDs from a local JSON file
     async function fetchVideoIdsFromJSON(playlistId) {
         const response = await fetch(`data/${playlistId}.json`);
         if (!response.ok) {
-            throw new Error(`Failed to load /data/${playlistId}.json (HTTP ${response.status})`);
+            throw new Error(`Failed to load data/${playlistId}.json (HTTP ${response.status})`);
         }
         const data = await response.json();
-        // Expect the JSON to be an array of video IDs (strings)
         if (!Array.isArray(data)) {
             throw new Error(`JSON file must contain an array of video IDs.`);
         }
@@ -438,6 +441,30 @@
     function setLoading(show, text = '⏳ FETCHING PLAYLIST...') {
         loadingDiv.style.display = show ? 'block' : 'none';
         if (show) loadingDiv.innerText = text;
+    }
+
+    function resetHistory() {
+        playHistory = [];
+        historyPosition = -1;
+    }
+
+    // Add an index to history and optionally load it
+    function addToHistory(index, loadNow = true) {
+        // If we are not at the end (e.g., after using Prev), truncate forward history
+        if (historyPosition < playHistory.length - 1) {
+            playHistory = playHistory.slice(0, historyPosition + 1);
+        }
+        playHistory.push(index);
+        historyPosition++;
+        // Keep history reasonable (max 100)
+        if (playHistory.length > 100) {
+            playHistory.shift();
+            historyPosition--;
+        }
+        if (loadNow) {
+            currentIndex = index;
+            ytPlayer.loadVideoById(currentVideoIds[currentIndex]);
+        }
     }
 
     async function loadPlaylist(playlistId, buttonElement) {
@@ -452,12 +479,16 @@
             if (!videoIds.length) throw new Error('No videos found in JSON.');
             currentVideoIds = videoIds;
             
-            // Random start index if shuffle is ON
+            let startIndex;
             if (shuffleMode) {
-                currentIndex = Math.floor(Math.random() * currentVideoIds.length);
+                startIndex = Math.floor(Math.random() * currentVideoIds.length);
             } else {
-                currentIndex = 0;
+                startIndex = 0;
             }
+            currentIndex = startIndex;
+            
+            resetHistory();
+            addToHistory(currentIndex, false);   // add to history but don't load yet (will load below)
             
             if (ytPlayer) ytPlayer.loadVideoById(currentVideoIds[currentIndex]);
             
@@ -474,28 +505,41 @@
 
     function playNext() {
         if (!currentVideoIds.length) return;
+        let newIndex;
         if (shuffleMode) {
-            let newIndex = currentIndex;
-            while (newIndex === currentIndex && currentVideoIds.length > 1)
+            do {
                 newIndex = Math.floor(Math.random() * currentVideoIds.length);
-            currentIndex = newIndex;
+            } while (newIndex === currentIndex && currentVideoIds.length > 1);
         } else {
-            currentIndex = (currentIndex + 1) % currentVideoIds.length;
+            newIndex = (currentIndex + 1) % currentVideoIds.length;
         }
-        ytPlayer.loadVideoById(currentVideoIds[currentIndex]);
+        // Add current video to history before moving
+        addToHistory(currentIndex, false);
+        // Add the new video (and load it)
+        addToHistory(newIndex, true);
     }
 
     function playPrev() {
         if (!currentVideoIds.length) return;
-        if (shuffleMode) {
-            let newIndex = currentIndex;
-            while (newIndex === currentIndex && currentVideoIds.length > 1)
-                newIndex = Math.floor(Math.random() * currentVideoIds.length);
-            currentIndex = newIndex;
+        // If there is previous history (at least 2 items and we are not at the first)
+        if (playHistory.length >= 2 && historyPosition > 0) {
+            // Move back one step in history
+            historyPosition--;
+            const prevIndex = playHistory[historyPosition];
+            currentIndex = prevIndex;
+            ytPlayer.loadVideoById(currentVideoIds[currentIndex]);
         } else {
-            currentIndex = (currentIndex - 1 + currentVideoIds.length) % currentVideoIds.length;
+            // No history: wrap around (or pick random if shuffle)
+            let newIndex;
+            if (shuffleMode) {
+                do {
+                    newIndex = Math.floor(Math.random() * currentVideoIds.length);
+                } while (newIndex === currentIndex && currentVideoIds.length > 1);
+            } else {
+                newIndex = (currentIndex - 1 + currentVideoIds.length) % currentVideoIds.length;
+            }
+            addToHistory(newIndex, true);
         }
-        ytPlayer.loadVideoById(currentVideoIds[currentIndex]);
     }
 
     function toggleShuffle() {
@@ -504,6 +548,8 @@
         shuffleBtn.style.background = shuffleMode ? "#ffaa00" : "#0c0d1f";
         shuffleBtn.style.color = shuffleMode ? "#0c0d1f" : "#ffaa00";
         shuffleBtn.style.borderColor = shuffleMode ? "#ffffff" : "#5be8f9";
+        // Optionally reset history when toggling shuffle? (Not required, but keeps it clean)
+        // resetHistory();
     }
 
     function onPlayerReady() {
@@ -515,7 +561,9 @@
     }
 
     function onPlayerStateChange(event) {
-        if (event.data === YT.PlayerState.ENDED) playNext();
+        if (event.data === YT.PlayerState.ENDED) {
+            playNext();
+        }
     }
 
     function onPlayerError(event) {
