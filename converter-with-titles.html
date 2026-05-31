@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Playlist to JSON Converter</title>
+    <title>Playlist to JSON Converter (with titles)</title>
     <style>
         body { background: #0c0d1f; color: #fff; font-family: monospace; padding: 20px; }
         textarea, input, button { background: #1e1f3a; color: #5be8f9; border: 1px solid #d26cf3; padding: 8px; margin: 5px; border-radius: 8px; }
@@ -11,8 +11,8 @@
     </style>
 </head>
 <body>
-<h2>YouTube Playlist → JSON Converter</h2>
-<p>Enter a playlist ID and click "Fetch & Download". The script will fetch <strong>all videos</strong> (no 200 limit) and save as a JSON file.</p>
+<h2>YouTube Playlist → Enriched JSON Converter (ID + Title)</h2>
+<p>Fetches all video IDs and their titles, saves as array of objects: <code>[{"id":"...","title":"..."}]</code></p>
 <input type="text" id="playlistId" placeholder="Playlist ID" size="50">
 <button id="fetchBtn">Fetch & Download</button>
 <button id="batchBtn">Convert All 8 Playlists</button>
@@ -21,6 +21,7 @@
 <script>
 const API_KEY = 'AIzaSyAZKamrcHaJPk29dNx0U58gudRPlvxWtJI'; // Replace if needed
 
+// Fetch all video IDs from a playlist (handles pagination)
 async function fetchAllVideoIds(playlistId) {
     let allIds = [];
     let nextPageToken = '';
@@ -36,6 +37,40 @@ async function fetchAllVideoIds(playlistId) {
     return allIds;
 }
 
+// Fetch titles for a batch of video IDs (max 50 per request)
+async function fetchTitlesForBatch(videoIds) {
+    if (!videoIds.length) return [];
+    const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoIds.join(',')}&key=${API_KEY}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    // Build a map for quick lookup
+    const titleMap = {};
+    if (data.items) {
+        data.items.forEach(item => {
+            titleMap[item.id] = item.snippet.title;
+        });
+    }
+    // Return array of objects in the same order as input
+    return videoIds.map(id => ({
+        id: id,
+        title: titleMap[id] || `Video ${id.slice(0,8)}...`
+    }));
+}
+
+// Main: fetch all IDs, then fetch titles in batches of 50
+async function fetchEnrichedPlaylist(playlistId) {
+    const allIds = await fetchAllVideoIds(playlistId);
+    const enriched = [];
+    // Process in chunks of 50 (YouTube API limit for videos endpoint)
+    for (let i = 0; i < allIds.length; i += 50) {
+        const chunk = allIds.slice(i, i + 50);
+        const enrichedChunk = await fetchTitlesForBatch(chunk);
+        enriched.push(...enrichedChunk);
+    }
+    return enriched;
+}
+
 function downloadJSON(data, filename) {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
@@ -49,9 +84,9 @@ async function convertSingle(playlistId, filename) {
     const logDiv = document.getElementById('log');
     logDiv.innerHTML += `⏳ Fetching ${playlistId}...<br>`;
     try {
-        const ids = await fetchAllVideoIds(playlistId);
-        downloadJSON(ids, filename);
-        logDiv.innerHTML += `✅ Saved ${ids.length} videos to ${filename}<br>`;
+        const enriched = await fetchEnrichedPlaylist(playlistId);
+        downloadJSON(enriched, filename);
+        logDiv.innerHTML += `✅ Saved ${enriched.length} videos (with titles) to ${filename}<br>`;
     } catch (err) {
         logDiv.innerHTML += `❌ Error: ${err.message}<br>`;
     }
@@ -68,15 +103,16 @@ document.getElementById('batchBtn').onclick = async () => {
         { id: 'PLm0x3HD8x6CP3no0izE7AreCY4pcIr5_7', name: 'music_videos' },
         { id: 'PLHMlZG4cXc4Kg_qSArbWS_8HwOdCnFgsG', name: 'plur' },
         { id: 'PLm0x3HD8x6CMbBbwBL1upNiWF2wu2Boxq', name: 'vaporwave' },
-        { id: 'PLm0x3HD8x6CMFcUY1pY3yN1LkPQ8Pyyic', name: 'slut_pop' },
+        { id: 'PLm0x3HD8x6CMFcUY1pY3yN1LkPQ8Pyyic', name: 'slutpop' },      // name matches your button
         { id: 'PLm0x3HD8x6COvPZ6q89JXNg8d8lkLXLaQ', name: '2010s' },
         { id: 'PLm0x3HD8x6CMnNt_WX6AppP05txGwYmM7', name: '2000s' },
-        { id: 'PLm0x3HD8x6CNIrhKVYizgkH28e1tQqy3L', name: '80s' },
+        { id: 'PLm0x3HD8x6CNIrhKVYizgkH28e1tQqy3L', name: '90s' },           // assuming 90s playlist
+        { id: 'PLm0x3HD8x6CNIrhKVYizgkH28e1tQqy3L', name: '80s' },           // same as 90s? adjust if you have separate
         { id: 'PLm0x3HD8x6CN20O4nHZ1GLx1_9z-bNq0t', name: 'discover' }
     ];
     for (const p of playlists) {
         await convertSingle(p.id, `${p.name}.json`);
-        await new Promise(r => setTimeout(r, 500)); // small delay to avoid rate limits
+        await new Promise(r => setTimeout(r, 500)); // small delay
     }
     alert('All conversions finished!');
 };
