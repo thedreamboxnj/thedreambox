@@ -25,15 +25,35 @@
             -moz-osx-font-smoothing: grayscale;
             position: relative;
         }
-        /* Background video */
-        #bg-video {
+        /* Background video + fallback */
+        .bg-container {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
             z-index: -2;
+        }
+        #bg-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .bg-fallback {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #0c0d1f, #1a0b2e, #0c0d1f);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            z-index: -1;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
         .video-overlay {
             position: fixed;
@@ -394,10 +414,13 @@
     </style>
 </head>
 <body>
-    <!-- Background video will be changed dynamically -->
-    <video id="bg-video" autoplay loop muted playsinline>
-        <source src="https://assets.mixkit.co/videos/preview/mixkit-digital-glitch-background-3123-large.mp4" type="video/mp4">
-    </video>
+    <!-- Background video + fallback -->
+    <div class="bg-container">
+        <video id="bg-video" autoplay loop muted playsinline>
+            <source src="https://assets.mixkit.co/videos/preview/mixkit-digital-glitch-background-3123-large.mp4" type="video/mp4">
+        </video>
+        <div class="bg-fallback"></div>
+    </div>
     <div class="video-overlay"></div>
     <div class="crt-overlay"></div>
 
@@ -482,10 +505,9 @@
 
     <script>
         // ============================================================
-        // PLAYLIST PLAYER WITH DYNAMIC BACKGROUND VIDEOS
+        // PLAYLIST PLAYER WITH ENRICHED JSON (id + title), NO API CALLS
         // ============================================================
-        const API_KEY = 'AIzaSyAZkamrcHaJPk29dNx0U58gudRPlvxWtJI';
-        let currentVideoIds = [];
+        let currentVideos = [];   // array of objects {id, title}
         let currentIndex = 0;
         let shuffleMode = true; 
         let ytPlayer = null;
@@ -493,7 +515,15 @@
 
         let playHistory = [];
         let historyPosition = -1;
-        let titleCache = {};
+
+        const bgVideo = document.getElementById('bg-video');
+        const loadingDiv = document.getElementById('loadingIndicator');
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const shareBtn = document.getElementById('share-btn');
+        const nowPlayingDiv = document.getElementById('nowPlaying');
+        const toastDiv = document.getElementById('toast');
 
         // Map playlist IDs to background video URLs
         const backgroundVideos = {
@@ -509,64 +539,29 @@
             discover: "https://assets.mixkit.co/videos/preview/mixkit-undersea-glitch-effect-4216-large.mp4"
         };
 
-        const bgVideo = document.getElementById('bg-video');
-        
         function updateBackground(playlistId) {
             const videoUrl = backgroundVideos[playlistId] || backgroundVideos.default;
             if (bgVideo.src !== videoUrl) {
-                // Important: change src and ensure autoplay works
                 bgVideo.src = videoUrl;
                 bgVideo.load();
-                bgVideo.play().catch(e => console.log("Autoplay prevented:", e));
+                bgVideo.play().catch(e => console.log("Background autoplay blocked:", e));
             }
         }
 
-        const loadingDiv = document.getElementById('loadingIndicator');
-        const shuffleBtn = document.getElementById('shuffle-btn');
-        const prevBtn = document.getElementById('prev-btn');
-        const nextBtn = document.getElementById('next-btn');
-        const shareBtn = document.getElementById('share-btn');
-        const nowPlayingDiv = document.getElementById('nowPlaying');
-        const toastDiv = document.getElementById('toast');
-
-        async function fetchVideoIdsFromJSON(playlistId) {
+        async function fetchEnrichedPlaylist(playlistId) {
             const response = await fetch(`data/${playlistId}.json`);
-            if (!response.ok) {
-                throw new Error(`Failed to load data/${playlistId}.json (HTTP ${response.status})`);
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
-            if (!Array.isArray(data)) {
-                throw new Error(`JSON file must contain an array of video IDs.`);
-            }
-            return data;
-        }
-
-        async function fetchVideoTitle(videoId) {
-            if (titleCache[videoId]) return titleCache[videoId];
-            try {
-                const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`;
-                const response = await fetch(url);
-                const data = await response.json();
-                if (data.items && data.items.length > 0) {
-                    const title = data.items[0].snippet.title;
-                    titleCache[videoId] = title;
-                    return title;
+            // Support both old format (array of IDs) and new format (array of objects)
+            if (Array.isArray(data)) {
+                if (data.length > 0 && typeof data[0] === 'string') {
+                    // old format: convert to enriched
+                    return data.map(id => ({ id, title: `Video ${id.slice(0,8)}...` }));
                 }
-                return `Video ${videoId.slice(0,8)}...`;
-            } catch (err) {
-                console.warn(`Could not fetch title for ${videoId}:`, err);
-                return `Video ${videoId.slice(0,8)}...`;
+                // already enriched
+                return data;
             }
-        }
-
-        async function updateNowPlayingWithTitle() {
-            if (!currentVideoIds.length) {
-                nowPlayingDiv.innerText = `🎵 -- / --`;
-                return;
-            }
-            const videoId = currentVideoIds[currentIndex];
-            const title = await fetchVideoTitle(videoId);
-            nowPlayingDiv.innerText = `🎵 ${title} (${currentIndex+1}/${currentVideoIds.length})`;
+            throw new Error('Invalid JSON format');
         }
 
         function setLoading(show, text = '⏳ FETCHING PLAYLIST...') {
@@ -591,17 +586,25 @@
             }
             if (loadNow) {
                 currentIndex = index;
-                ytPlayer.loadVideoById(currentVideoIds[currentIndex]);
-                updateNowPlayingWithTitle();
+                ytPlayer.loadVideoById(currentVideos[currentIndex].id);
+                updateNowPlaying();
             }
+        }
+
+        function updateNowPlaying() {
+            if (!currentVideos.length) {
+                nowPlayingDiv.innerText = `🎵 -- / --`;
+                return;
+            }
+            const video = currentVideos[currentIndex];
+            const title = video.title || `Video ${video.id.slice(0,8)}...`;
+            nowPlayingDiv.innerText = `🎵 ${title} (${currentIndex+1}/${currentVideos.length})`;
         }
 
         function showToast(msg) {
             toastDiv.innerText = msg;
             toastDiv.classList.add('show');
-            setTimeout(() => {
-                toastDiv.classList.remove('show');
-            }, 2000);
+            setTimeout(() => toastDiv.classList.remove('show'), 2000);
         }
 
         async function loadPlaylist(playlistId, buttonElement) {
@@ -611,29 +614,23 @@
             document.querySelectorAll('.playlist-btn').forEach(btn => btn.classList.remove('active'));
             buttonElement.classList.add('active');
 
-            // Change background video for this playlist
             updateBackground(playlistId);
 
             try {
-                const videoIds = await fetchVideoIdsFromJSON(playlistId);
-                if (!videoIds.length) throw new Error('No videos found in JSON.');
-                currentVideoIds = videoIds;
+                const videos = await fetchEnrichedPlaylist(playlistId);
+                if (!videos.length) throw new Error('No videos found.');
+                currentVideos = videos;
                 
-                let startIndex;
-                if (shuffleMode) {
-                    startIndex = Math.floor(Math.random() * currentVideoIds.length);
-                } else {
-                    startIndex = 0;
-                }
+                let startIndex = shuffleMode ? Math.floor(Math.random() * currentVideos.length) : 0;
                 currentIndex = startIndex;
                 
                 resetHistory();
                 addToHistory(currentIndex, false);
                 
-                if (ytPlayer) ytPlayer.loadVideoById(currentVideoIds[currentIndex]);
-                await updateNowPlayingWithTitle();
+                if (ytPlayer) ytPlayer.loadVideoById(currentVideos[currentIndex].id);
+                updateNowPlaying();
                 
-                setLoading(false, `✅ LOADED ${currentVideoIds.length} VIDEOS`);
+                setLoading(false, `✅ LOADED ${currentVideos.length} VIDEOS`);
                 setTimeout(() => setLoading(false), 2000);
             } catch (err) {
                 console.error(err);
@@ -644,40 +641,40 @@
             }
         }
 
-        async function playNext() {
-            if (!currentVideoIds.length) return;
+        function playNext() {
+            if (!currentVideos.length) return;
             let newIndex;
             if (shuffleMode) {
                 do {
-                    newIndex = Math.floor(Math.random() * currentVideoIds.length);
-                } while (newIndex === currentIndex && currentVideoIds.length > 1);
+                    newIndex = Math.floor(Math.random() * currentVideos.length);
+                } while (newIndex === currentIndex && currentVideos.length > 1);
             } else {
-                newIndex = (currentIndex + 1) % currentVideoIds.length;
+                newIndex = (currentIndex + 1) % currentVideos.length;
             }
             addToHistory(currentIndex, false);
             addToHistory(newIndex, true);
-            await updateNowPlayingWithTitle();
+            updateNowPlaying();
         }
 
-        async function playPrev() {
-            if (!currentVideoIds.length) return;
+        function playPrev() {
+            if (!currentVideos.length) return;
             if (playHistory.length >= 2 && historyPosition > 0) {
                 historyPosition--;
                 const prevIndex = playHistory[historyPosition];
                 currentIndex = prevIndex;
-                ytPlayer.loadVideoById(currentVideoIds[currentIndex]);
-                await updateNowPlayingWithTitle();
+                ytPlayer.loadVideoById(currentVideos[currentIndex].id);
+                updateNowPlaying();
             } else {
                 let newIndex;
                 if (shuffleMode) {
                     do {
-                        newIndex = Math.floor(Math.random() * currentVideoIds.length);
-                    } while (newIndex === currentIndex && currentVideoIds.length > 1);
+                        newIndex = Math.floor(Math.random() * currentVideos.length);
+                    } while (newIndex === currentIndex && currentVideos.length > 1);
                 } else {
-                    newIndex = (currentIndex - 1 + currentVideoIds.length) % currentVideoIds.length;
+                    newIndex = (currentIndex - 1 + currentVideos.length) % currentVideos.length;
                 }
                 addToHistory(newIndex, true);
-                await updateNowPlayingWithTitle();
+                updateNowPlaying();
             }
         }
 
@@ -690,33 +687,24 @@
             showToast(shuffleMode ? "Shuffle ON" : "Shuffle OFF");
         }
 
-        async function shareCurrentTrack() {
-            if (!currentVideoIds.length) {
+        function shareCurrentTrack() {
+            if (!currentVideos.length) {
                 showToast("No track playing");
                 return;
             }
-            const videoId = currentVideoIds[currentIndex];
-            const title = await fetchVideoTitle(videoId);
-            const message = `🎵 Listening to "${title}" (${currentIndex+1}/${currentVideoIds.length}) on Dreambox Cyberdeck`;
-            navigator.clipboard.writeText(message).then(() => {
-                showToast("📋 Copied to clipboard!");
-            }).catch(() => {
-                showToast("❌ Failed to copy");
-            });
+            const video = currentVideos[currentIndex];
+            const title = video.title || `Video ${video.id.slice(0,8)}...`;
+            const message = `🎵 Listening to "${title}" (${currentIndex+1}/${currentVideos.length}) on Dreambox Cyberdeck`;
+            navigator.clipboard.writeText(message).then(() => showToast("📋 Copied!")).catch(() => showToast("❌ Failed to copy"));
         }
 
         function onPlayerReady() {
             const activeBtn = document.querySelector('.playlist-btn.active');
-            if (activeBtn) {
-                const playlistId = activeBtn.getAttribute('data-playlist-id');
-                if (playlistId) loadPlaylist(playlistId, activeBtn);
-            }
+            if (activeBtn) loadPlaylist(activeBtn.getAttribute('data-playlist-id'), activeBtn);
         }
 
         function onPlayerStateChange(event) {
-            if (event.data === YT.PlayerState.ENDED) {
-                playNext();
-            }
+            if (event.data === YT.PlayerState.ENDED) playNext();
         }
 
         function onPlayerError(event) {
