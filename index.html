@@ -35,7 +35,6 @@
             object-fit: cover;
             z-index: -2;
         }
-        /* Dark overlay for readability */
         .video-overlay {
             position: fixed;
             top: 0;
@@ -276,7 +275,6 @@
             border-color: #ffaa00;
             color: #ffaa00;
         }
-        /* New: Share button style */
         .share-btn {
             background: rgba(12, 13, 31, 0.9);
             border: 2px solid #5be8f9;
@@ -396,7 +394,6 @@
     </style>
 </head>
 <body>
-    <!-- Background video (VHS glitch loop) -->
     <video id="bg-video" autoplay loop muted playsinline>
         <source src="https://assets.mixkit.co/videos/preview/mixkit-digital-glitch-background-3123-large.mp4" type="video/mp4">
     </video>
@@ -484,8 +481,9 @@
 
     <script>
         // ============================================================
-        // PLAYLIST PLAYER WITH HISTORY, NOW PLAYING COUNTER, AND SHARE
+        // PLAYLIST PLAYER WITH YOUTUBE DATA API FOR VIDEO TITLES
         // ============================================================
+        const API_KEY = 'AIzaSyAZkamrcHaJPk29dNx0U58gudRPlvxWtJI'; // Your existing key
         let currentVideoIds = [];
         let currentIndex = 0;
         let shuffleMode = true; 
@@ -494,6 +492,9 @@
 
         let playHistory = [];
         let historyPosition = -1;
+
+        // Cache for video titles
+        let titleCache = {};
 
         const loadingDiv = document.getElementById('loadingIndicator');
         const shuffleBtn = document.getElementById('shuffle-btn');
@@ -513,6 +514,34 @@
                 throw new Error(`JSON file must contain an array of video IDs.`);
             }
             return data;
+        }
+
+        async function fetchVideoTitle(videoId) {
+            if (titleCache[videoId]) return titleCache[videoId];
+            try {
+                const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.items && data.items.length > 0) {
+                    const title = data.items[0].snippet.title;
+                    titleCache[videoId] = title;
+                    return title;
+                }
+                return `Video ${videoId.slice(0,8)}...`;
+            } catch (err) {
+                console.warn(`Could not fetch title for ${videoId}:`, err);
+                return `Video ${videoId.slice(0,8)}...`;
+            }
+        }
+
+        async function updateNowPlayingWithTitle() {
+            if (!currentVideoIds.length) {
+                nowPlayingDiv.innerText = `🎵 -- / --`;
+                return;
+            }
+            const videoId = currentVideoIds[currentIndex];
+            const title = await fetchVideoTitle(videoId);
+            nowPlayingDiv.innerText = `🎵 ${title} (${currentIndex+1}/${currentVideoIds.length})`;
         }
 
         function setLoading(show, text = '⏳ FETCHING PLAYLIST...') {
@@ -538,14 +567,7 @@
             if (loadNow) {
                 currentIndex = index;
                 ytPlayer.loadVideoById(currentVideoIds[currentIndex]);
-            }
-        }
-
-        function updateNowPlaying() {
-            if (currentVideoIds.length) {
-                nowPlayingDiv.innerText = `🎵 ${currentIndex+1} / ${currentVideoIds.length}`;
-            } else {
-                nowPlayingDiv.innerText = `🎵 -- / --`;
+                updateNowPlayingWithTitle();
             }
         }
 
@@ -581,8 +603,8 @@
                 addToHistory(currentIndex, false);
                 
                 if (ytPlayer) ytPlayer.loadVideoById(currentVideoIds[currentIndex]);
+                await updateNowPlayingWithTitle();
                 
-                updateNowPlaying();
                 setLoading(false, `✅ LOADED ${currentVideoIds.length} VIDEOS`);
                 setTimeout(() => setLoading(false), 2000);
             } catch (err) {
@@ -594,7 +616,7 @@
             }
         }
 
-        function playNext() {
+        async function playNext() {
             if (!currentVideoIds.length) return;
             let newIndex;
             if (shuffleMode) {
@@ -606,17 +628,17 @@
             }
             addToHistory(currentIndex, false);
             addToHistory(newIndex, true);
-            updateNowPlaying();
+            await updateNowPlayingWithTitle();
         }
 
-        function playPrev() {
+        async function playPrev() {
             if (!currentVideoIds.length) return;
             if (playHistory.length >= 2 && historyPosition > 0) {
                 historyPosition--;
                 const prevIndex = playHistory[historyPosition];
                 currentIndex = prevIndex;
                 ytPlayer.loadVideoById(currentVideoIds[currentIndex]);
-                updateNowPlaying();
+                await updateNowPlayingWithTitle();
             } else {
                 let newIndex;
                 if (shuffleMode) {
@@ -627,7 +649,7 @@
                     newIndex = (currentIndex - 1 + currentVideoIds.length) % currentVideoIds.length;
                 }
                 addToHistory(newIndex, true);
-                updateNowPlaying();
+                await updateNowPlayingWithTitle();
             }
         }
 
@@ -640,12 +662,14 @@
             showToast(shuffleMode ? "Shuffle ON" : "Shuffle OFF");
         }
 
-        function shareCurrentTrack() {
+        async function shareCurrentTrack() {
             if (!currentVideoIds.length) {
                 showToast("No track playing");
                 return;
             }
-            const message = `🎵 Listening to track ${currentIndex+1} of ${currentVideoIds.length} on Dreambox Cyberdeck`;
+            const videoId = currentVideoIds[currentIndex];
+            const title = await fetchVideoTitle(videoId);
+            const message = `🎵 Listening to "${title}" (${currentIndex+1}/${currentVideoIds.length}) on Dreambox Cyberdeck`;
             navigator.clipboard.writeText(message).then(() => {
                 showToast("📋 Copied to clipboard!");
             }).catch(() => {
